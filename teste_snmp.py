@@ -1,6 +1,17 @@
 import subprocess   
 import sys
 import shlex 
+import ipaddress
+
+
+def ip_valido(ip):
+    try:
+        ipaddress.ip_address(ip)
+        return True
+    except ValueError:
+        return False
+
+
 
 def iniciar_script():
     print("\nOlá, vamos iniciar a checagem SNMP")
@@ -34,17 +45,32 @@ print("\n\nAgora informe os IPS dos hosts que iremos checar")
 #contador para manter visual quantos ips estão sendo informados 
 cont = 0
 
+#controle de quantidade de tentativas
+tentativas = 0
+
 while True:   
 
     #antes de adicionar a lista de ips, vou fazer as validações e armazenar o ip em uma variável para depois adicionar na lista
-    tmpIp = (input(f"Digite o {cont+1}º IP: (Para seguir tecle Enter)\n")).strip()
+    tmpIp = (input(f"Digite o {cont+1}º IP: (Para seguir tecle Enter sem digitar nenhum IP)\n")).strip()
 
     if tmpIp == "":
         break
-    else:
-        ips.append(tmpIp)
-        cont += 1
 
+    if not ip_valido(tmpIp):
+        print("Formato inválido, verifique e tente novamente!\n")
+        tentativas += 1
+        if tentativas == 3:
+            print("Muitas tentativas inválidas.")
+            break
+        continue
+
+    tentativas = 0
+    ips.append(tmpIp)
+    cont += 1
+
+if cont == 0:
+    print("Você não informou nenhum IP válido, encerrando programa! Até mais!")
+    sys.exit()
 
 print(f"\nOk, você informou {cont} IP(S), segue lista para verificação, se digitou algum IP errado feche e execute novamente o script!")
 
@@ -98,11 +124,7 @@ for i, ip in enumerate(ips):
         print(f"Iniciando SNMPWALK no Host {ip}")
         comando = ["snmpwalk", "-v2c", "-c", community[i], f"{ip}:{porta[i]}", "sysName"]
         teste_snmp = subprocess.run(comando, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        if teste_snmp.returncode == 0:
-            snmp_status.append(teste_snmp.returncode)
-        else:
-            snmp_status.append(teste_snmp.returncode)
+        snmp_status.append(teste_snmp.returncode)
     else:
         print(f"Host {ip}: Pulado (Sem Ping)")
         snmp_status.append(None)
